@@ -19,7 +19,7 @@ GPIO.output(7,True)
 ###    Defining variables
 
 senderHashID = 3364240679
-ServerTCP_IP = '172.100.1.99'
+ServerTCP_IP = '172.100.1.100'
 ServerTCP_PORT = 31
 
 BUFFER_SIZE = 1024

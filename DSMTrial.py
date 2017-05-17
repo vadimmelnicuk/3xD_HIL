@@ -14,7 +14,7 @@ class HIL:
 	BUFFER_SIZE = 1024
 	CONNECTED = False
 	REG_ACKNW = False
-	SCENARIO_STATE_RUNNING = False
+	SCENARIO_RUNNING = False
 	SOCKET = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	TICK_RATE = 0.5 # in seconds
 	TICK_TIME = time.time()
@@ -89,13 +89,13 @@ class HIL:
 		messagePadding = self.MESSAGE[12:16]
 		messageTimestamp = self.MESSAGE[16:24]
 		
-		if self.SCENARIO_STATE_RUNNING == False:
+		if self.SCENARIO_RUNNING == False:
 			if messageId == self.runMsgIDBytes:
 				print("HIL: Scenario RUN message received " + str(self.MESSAGE))
 				runAckwMsgBytes = self.runAckwMsgSize + self.runAckwMsgIDBytes + self.senderHashIDBytes + self.BitPad4 + bytes(array.array('d', [time.clock()]))
 				self.SOCKET.sendall(runAckwMsgBytes)
 				print('HIL: Scenario RUN acknowledgement sent')
-				self.SCENARIO_STATE_RUNNING = True
+				self.SCENARIO_RUNNING = True
 		else:
 			if messageId == self.stopMsgIDBytes:
 				print("HIL: Scenario STOP message received " + str(self.MESSAGE))
@@ -107,13 +107,35 @@ class HIL:
 				if time.time() - self.VEHICLE_UPDATE_TIME >= self.VEHICLE_UPDATE_RATE:
 					print('HIL: Vehicle update received')
 					self.VEHICLE_UPDATE_TIME = time.time()
+					
+					messageVehicleId = self.MESSAGE[24:28]
+					
+					print(self.MESSAGE)
+					print(messageSize)
+					print(messageId)
+					print(messageSender)
+					print(messagePadding)
+					print(messageTimestamp)
+					print(messageVehicleId)
+					
+					messageSizeInt = int.from_bytes(messageSize, byteorder = 'little')
+					messageIdInt = int.from_bytes(messageId, byteorder = 'little')
+					messageSenderInt = int.from_bytes(messageSender, byteorder = 'little')
+					#messageTimestampFloat = float.fromhex(messageTimestamp)
+					messageVehicleIdInt = int.from_bytes(messageVehicleId, byteorder = 'little')
+					
 					#print(self.MESSAGE)
+					print(messageSizeInt)
+					print(messageIdInt)
+					print(messageSenderInt)
+					#print(messageTimestampFloat)
+					print(messageVehicleIdInt)
 		
 		self.MESSAGE = ''
 		
 	def tick(self):
 		if time.time() - self.TICK_TIME >= self.TICK_RATE:
-			print("TICK: " + str(self.TICK_COUNT))
+			#print("TICK: " + str(self.TICK_COUNT))
 			self.TICK_TIME = time.time()
 			self.TICK_COUNT += 1
 			countBytes = (self.TICK_COUNT).to_bytes(8, byteorder = 'little')

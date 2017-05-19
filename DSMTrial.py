@@ -19,8 +19,9 @@ class HIL:
 	TICK_RATE = 0.5 # in seconds
 	TICK_TIME = time.time()
 	TICK_COUNT = 1
-	VEHICLE_UPDATE_RATE = 5 # in seconds
+	VEHICLE_UPDATE_RATE = 1 # in seconds
 	VEHICLE_UPDATE_TIME = time.time()
+	VEHICLE_ID = 3861536113 # Change this to suit your scenario; the vehicle id can be found in IOS->Tools->Object List->Look for top record
 	MESSAGE = ''
 
 	### Messages
@@ -52,21 +53,21 @@ class HIL:
 	### Functions
 	def connect(self):
 		try:
-			print("SOCKET: Connecting to server " + self.SERVER_TCP_IP + ":" + str(self.SERVER_TCP_PORT))
+			print("CLIENT: Connecting to server " + self.SERVER_TCP_IP + ":" + str(self.SERVER_TCP_PORT))
 			self.SOCKET.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, True)
 			self.SOCKET.connect((self.SERVER_TCP_IP, socket.htons(31)))
 			self.SOCKET.setblocking(False)
 			self.CONNECTED = True
-			print("SOCKET: Connected")
+			print("HIL: Connected")
 		except TypeError:
-			print("SOCKET: Connection failed")
+			print("HIL: Connection failed")
 			self.disconnect()
 			
 	def disconnect(self):
 		self.SOCKET.close()
 	
 	def registerClient(self):
-		print("HIL: Attempting to register")
+		print("CLIENT: Attempting to register")
 		while self.REG_ACKNW == False:
 			self.SOCKET.sendall(self.regMsgBytes)
 			self.readMessage()
@@ -86,50 +87,76 @@ class HIL:
 		messageSize = self.MESSAGE[0:4]
 		messageId = self.MESSAGE[4:8]
 		messageSender = self.MESSAGE[8:12]
-		messagePadding = self.MESSAGE[12:16]
 		messageTimestamp = self.MESSAGE[16:24]
 		
 		if self.SCENARIO_RUNNING == False:
 			if messageId == self.runMsgIDBytes:
-				print("HIL: Scenario RUN message received " + str(self.MESSAGE))
+				print("HIL: Scenario RUN message received ")
 				runAckwMsgBytes = self.runAckwMsgSize + self.runAckwMsgIDBytes + self.senderHashIDBytes + self.BitPad4 + bytes(array.array('d', [time.clock()]))
 				self.SOCKET.sendall(runAckwMsgBytes)
-				print('HIL: Scenario RUN acknowledgement sent')
+				print('CLIENT: Scenario RUN acknowledgement sent')
 				self.SCENARIO_RUNNING = True
 		else:
 			if messageId == self.stopMsgIDBytes:
-				print("HIL: Scenario STOP message received " + str(self.MESSAGE))
+				print("HIL: Scenario STOP message received ")
 				stopAckwMsgBytes = self.stopAckwMsgSize + self.stopAckwMsgIDBytes + self.senderHashIDBytes + self.BitPad4 + bytes(array.array('d', [time.clock()]))
 				self.SOCKET.sendall(stopAckwMsgBytes)
-				print('HIL: Scenario STOP acknowledgement sent')
-				self.SCENARIO_STATE_RUNNING = False
+				print('CLIENT: Scenario STOP acknowledgement sent')
+				self.SCENARIO_RUNNING = False
 			elif messageId == self.VEHICLE_UPDATE_MESSAGE:
-				if time.time() - self.VEHICLE_UPDATE_TIME >= self.VEHICLE_UPDATE_RATE:
+				messageVehicleIdInt = struct.unpack('<I', self.MESSAGE[24:28])
+				# Check if a message arrived from the trainee vehicle
+				# Also check against data rate
+				if messageVehicleIdInt[0] == self.VEHICLE_ID and time.time() - self.VEHICLE_UPDATE_TIME >= self.VEHICLE_UPDATE_RATE:
 					print('HIL: Vehicle update received')
 					self.VEHICLE_UPDATE_TIME = time.time()
 					
-					messageVehicleId = self.MESSAGE[24:28]
-					
-					print(self.MESSAGE)
-					print(messageSize)
-					print(messageId)
-					print(messageSender)
-					print(messagePadding)
-					print(messageTimestamp)
-					print(messageVehicleId)
-					
-					messageSizeInt = int.from_bytes(messageSize, byteorder = 'little')
-					messageIdInt = int.from_bytes(messageId, byteorder = 'little')
-					messageSenderInt = int.from_bytes(messageSender, byteorder = 'little')
-					#messageTimestampFloat = float.fromhex(messageTimestamp)
-					messageVehicleIdInt = int.from_bytes(messageVehicleId, byteorder = 'little')
-					
-					#print(self.MESSAGE)
-					print(messageSizeInt)
-					print(messageIdInt)
-					print(messageSenderInt)
-					#print(messageTimestampFloat)
-					print(messageVehicleIdInt)
+					messageVehicleId = struct.unpack('<I', self.MESSAGE[24:28])[0]
+					messageFlags = struct.unpack('<I', self.MESSAGE[28:32])[0]
+					messageFlagBits = bin(messageFlags)
+					messageHeadLight = messageFlagBits[-1]
+					messageBrakeLight = messageFlagBits[-2]
+					messageReverseLight = messageFlagBits[-3]
+					messageFogLight = messageFlagBits[-4]
+					messageLeftIndicator = messageFlagBits[-5]
+					messageRightIndicator = messageFlagBits[-6]
+					messageHordOn = messageFlagBits[-7]
+					messageEngineOn = messageFlagBits[-8]
+					messageWheelScreeching = messageFlagBits[-9]
+					messageHiBeamOn = messageFlagBits[-10]
+					messageHandBrake = messageFlagBits[-11]
+					messagePositionLatitude = struct.unpack('<d', self.MESSAGE[32:40])[0]
+					messagePositionLongitude = struct.unpack('<d', self.MESSAGE[40:48])[0]
+					messagePositionElevation = struct.unpack('<d', self.MESSAGE[48:56])[0]
+					messagePositionX = struct.unpack('<d', self.MESSAGE[56:64])[0]
+					messagePositionY = struct.unpack('<d', self.MESSAGE[64:72])[0]
+					messagePositionZ = struct.unpack('<d', self.MESSAGE[72:80])[0]
+					messageOrientationX = struct.unpack('<d', self.MESSAGE[80:88])[0]
+					messageOrientationY = struct.unpack('<d', self.MESSAGE[88:96])[0]
+					messageOrientationZ = struct.unpack('<d', self.MESSAGE[96:104])[0]
+					messageVelocityX = struct.unpack('<d', self.MESSAGE[104:112])[0]
+					messageVelocityY = struct.unpack('<d', self.MESSAGE[112:120])[0]
+					messageVelocityZ = struct.unpack('<d', self.MESSAGE[120:128])[0]
+					messageAccelerationX = struct.unpack('<d', self.MESSAGE[128:136])[0]
+					messageAccelerationY = struct.unpack('<d', self.MESSAGE[136:144])[0]
+					messageAccelerationZ = struct.unpack('<d', self.MESSAGE[144:152])[0]
+					messageAngularVelocityX = struct.unpack('<d', self.MESSAGE[152:160])[0]
+					messageAngularVelocityY = struct.unpack('<d', self.MESSAGE[160:168])[0]
+					messageAngularVelocityZ = struct.unpack('<d', self.MESSAGE[168:176])[0]
+					messageSteeringAngle = struct.unpack('<d', self.MESSAGE[176:184])[0]
+					messageRpm = struct.unpack('<d', self.MESSAGE[184:192])[0]
+					messageAcceleratorPedal = struct.unpack('<d', self.MESSAGE[192:200])[0]
+					messageBrakePedal = struct.unpack('<d', self.MESSAGE[200:208])[0]
+					messageClutchPedal = struct.unpack('<d', self.MESSAGE[208:216])[0]
+					messageSteeringWheelAngle = struct.unpack('<d', self.MESSAGE[216:224])[0]
+ 					# signed int, from 1 to 6 number coresponds to the gear, automatic park = 7, automatic drive = 8, reverse = -1
+					messageGear = struct.unpack('<i', self.MESSAGE[224:228])[0]
+ 					
+					print("Vehicle id: " + str(messageVehicleIdInt))
+					print("Vehicle flags: " + str(messageHandBrake))
+					print("Vehicle Acceleration: " + str(messageAcceleratorPedal))
+					print("Vehicle RPM: " + str(messageRpm))
+					print("Vehicle Steering Angle: " + str(messageSteeringWheelAngle))
 		
 		self.MESSAGE = ''
 		
@@ -152,8 +179,8 @@ class HIL:
 				
 ### Main
 print("--------------------------------------------------------------")
-print("3xD HIL Client written in python")
-print("Developed by Vadim Melnicuk")
+print("3xD HIL Client written in Python v1.0")
+print("Developed by Vadim Melnicuk & Siddartha Khastgir")
 print("2017")
 print("--------------------------------------------------------------\n")
 

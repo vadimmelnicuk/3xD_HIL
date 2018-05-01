@@ -1,4 +1,5 @@
 import sys
+import time
 
 import hil
 import ble
@@ -13,6 +14,24 @@ print("--------------------------------------------------------------\n")
 bleClient = ble.BLE()
 bleClient.connect()
 
-#hilClient = hil.HIL()
-#hilClient.connect()
-#hilClient.mainLoop()
+hilClient = hil.HIL()
+hilClient.connect()
+
+# Main loop
+while hilClient.CONNECTED == True:
+	hilClient.registerClient()
+	
+	while hilClient.REG_ACKNW == True:
+		hilClient.readMessage()
+		message = hilClient.processMessages()
+		
+		if message != None:
+			bleClient.send(message)
+			
+		inputStream = bleClient.receive()
+	
+		if hilClient.SCENARIO_RUNNING and inputStream == b'100':
+			inputStream = ''
+			hilClient.manualControlMessage()
+			
+		hilClient.tick()

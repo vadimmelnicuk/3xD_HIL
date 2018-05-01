@@ -1,4 +1,5 @@
 import sys
+import select
 import bluetooth
 
 class BLE:
@@ -8,11 +9,11 @@ class BLE:
 	SERVER_PORT = None
 	SERVER_NAME = None
 	SERVER_HOST = None
-	
 	SOCKET = None
+	BUFFER_SIZE = 1024
 	
 	def connect(self):
-		print("BLE: Looking for the server")
+		print("BLE: Looking for the Bluetooth server")
 		
 		# Scan for bluetooth devices
 		#nearby_devices = bluetooth.discover_devices(lookup_names=True)
@@ -37,19 +38,38 @@ class BLE:
 		# Create the client socket
 		self.SOCKET = bluetooth.BluetoothSocket(bluetooth.RFCOMM)
 		self.SOCKET.connect((self.SERVER_HOST, self.SERVER_PORT))
+		self.SOCKET.setblocking(0)
 		
 		print("BLE: Connected")
 		
-		self.output()
+		#self.input()
 		
-	def output(self):
+	def input(self):
 		while True:
 			data = input()
 			if len(data) == 0: break
 			self.SOCKET.send(data)
 			
 	def send(self, message):
-		self.SOCKET.send(message)
+		try:
+			self.SOCKET.send(message)
+			return
+		except:
+			return
+		
+	def receive(self):
+		#ready = select.select([self.SOCKET], [], [])
+		#if ready[0]:
+			#message = self.SOCKET.recv(self.BUFFER_SIZE)
+			#print(message)
+			#return message
+		#return
+		
+		try:
+			message = self.SOCKET.recv(self.BUFFER_SIZE)
+			return message
+		except:
+			return
 
 	def disconnect(self):
 		self.SOCKET.close()
